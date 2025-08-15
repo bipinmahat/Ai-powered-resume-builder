@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Resume Builder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    /* Light keyframe background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(270deg, rgba(255,200,200,0.3), rgba(200,255,255,0.3), rgba(200,200,255,0.3));
+      background-size: 600% 600%;
+      animation: lightMove 20s ease infinite;
+      z-index: -1;
+    }
+
+    @keyframes lightMove {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 1rem;
+      box-shadow: 0 4px 30px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4">
+  <header class="text-center mb-6">
+    <h1 class="text-4xl font-bold">AI Resume Builder</h1>
+    <p class="text-gray-600">Build and tailor your resume with AI assistance</p>
+  </header>
+
+  <main class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-6xl">
+    <!-- Form -->
+    <section class="glass p-6">
+      <h2 class="text-2xl font-semibold mb-4">Your Info</h2>
+      <label class="block mb-2">Name
+        <input id="name" class="w-full border rounded p-2" type="text" />
+      </label>
+      <label class="block mb-2">Title
+        <input id="title" class="w-full border rounded p-2" type="text" />
+      </label>
+      <label class="block mb-2">Summary
+        <textarea id="summary" class="w-full border rounded p-2"></textarea>
+      </label>
+      <label class="block mb-2">Skills
+        <input id="skills" class="w-full border rounded p-2" type="text" />
+      </label>
+      <label class="block mb-2">Experience
+        <textarea id="experience" class="w-full border rounded p-2"></textarea>
+      </label>
+      <div class="flex flex-wrap gap-2 mt-4">
+        <button id="aiImproveSummary" class="px-4 py-2 bg-blue-500 text-white rounded">Improve Summary</button>
+        <button id="aiGenBullets" class="px-4 py-2 bg-green-500 text-white rounded">Generate Bullets</button>
+        <button id="aiFromJD" class="px-4 py-2 bg-purple-500 text-white rounded">Tailor From JD</button>
+      </div>
+    </section>
+
+    <!-- Preview -->
+    <section class="glass p-6 overflow-y-auto">
+      <h2 class="text-2xl font-semibold mb-4">Preview</h2>
+      <div id="preview" class="prose"></div>
+      <div class="flex flex-wrap gap-2 mt-4">
+        <button id="copyBtn" class="px-4 py-2 bg-gray-700 text-white rounded">Copy</button>
+        <button id="exportBtn" class="px-4 py-2 bg-gray-700 text-white rounded">Export</button>
+        <input type="file" id="importFile" class="hidden" />
+        <button id="importBtn" class="px-4 py-2 bg-gray-700 text-white rounded">Import</button>
+        <button id="compactBtn" class="px-4 py-2 bg-gray-700 text-white rounded">Compact</button>
+        <button id="fontPlus" class="px-4 py-2 bg-gray-700 text-white rounded">A+</button>
+        <button id="fontMinus" class="px-4 py-2 bg-gray-700 text-white rounded">A-</button>
+        <button id="bgBtn" class="px-4 py-2 bg-gray-700 text-white rounded">BG Intensity</button>
+        <button id="clearBtn" class="px-4 py-2 bg-red-500 text-white rounded">Clear</button>
+        <button id="printBtn" class="px-4 py-2 bg-blue-700 text-white rounded">Print</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Job Description Dialog -->
+  <dialog id="jdDialog" class="p-4 rounded max-w-lg w-full">
+    <h2 class="text-xl font-semibold mb-2">Paste Job Description</h2>
+    <textarea id="jobDescription" class="w-full border rounded p-2 mb-4"></textarea>
+    <div class="flex gap-2">
+      <button id="submitJD" class="px-4 py-2 bg-green-500 text-white rounded">Submit</button>
+      <button onclick="jdDialog.close()" class="px-4 py-2 bg-gray-400 text-white rounded">Cancel</button>
+    </div>
+  </dialog>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const aiState = { apply:null };
+
+    function render(){
+      $('preview').innerText = `Name: ${$('name').value}\nTitle: ${$('title').value}\nSummary: ${$('summary').value}\nSkills: ${$('skills').value}\nExperience: ${$('experience').value}`;
+    }
+    document.querySelectorAll('input,textarea').forEach(el=> el.addEventListener('input', render));
+
+    async function runAI({prompt,target}){
+      target.disabled = true;
+      target.textContent = '...';
+      try {
+        const res = await fetch('/api/gemini/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})});
+        const data = await res.json();
+        if(aiState.apply) aiState.apply(data.output || '');
+      }catch(err){ console.error(err); }
+      target.disabled = false;
+      target.textContent = target.dataset.label || target.textContent;
+    }
+
+    $('aiImproveSummary').dataset.label = 'Improve Summary';
+    $('aiImproveSummary').addEventListener('click',()=>{
+      aiState.apply = text => {$('summary').value = text; render();};
+      const p = `Rewrite this resume summary to be concise, strong, and ATS-friendly.\n\n${$('summary').value}`;
+      runAI({prompt:p, target:$('aiImproveSummary')});
+    });
+
+    $('aiGenBullets').dataset.label = 'Generate Bullets';
+    $('aiGenBullets').addEventListener('click',()=>{
+      aiState.apply = text => {$('experience').value += "\n"+text.trim(); render();};
+      const p = `Based on role, skills, and outcomes, generate 4-6 resume bullets (no pronouns, with metrics/tools).\n\nROLE: ${$('title').value}\nSKILLS: ${$('skills').value}\nCONTEXT: ${$('experience').value}`;
+      runAI({prompt:p, target:$('aiGenBullets')});
+    });
+
+    $('aiFromJD').dataset.label = 'Tailor From JD';
+    $('aiFromJD').addEventListener('click',()=> $('jdDialog').showModal());
+    $('submitJD').addEventListener('click',()=>{
+      aiState.apply = text => {
+        $('summary').value = text.split(/Skills:/i)[0].replace(/^(Summary:)?/i,'').trim() || text.trim();
+        $('experience').value += "\n"+text.trim();
+        render();
+      };
+      const jd = $('jobDescription').value;
+      const p = `Create a tailored resume summary + 6 bullets aligned to this JD. Keep ATS-friendly.\n\nJD: ${jd}\nUSER DATA: ${JSON.stringify({name:$('name').value,title:$('title').value,summary:$('summary').value,skills:$('skills').value,experience:$('experience').value},null,2)}`;
+      $('jdDialog').close();
+      runAI({prompt:p, target:$('aiFromJD')});
+    });
+
+    $('copyBtn').addEventListener('click',()=> navigator.clipboard.writeText($('preview').innerText));
+    $('exportBtn').addEventListener('click',()=>{
+      const blob = new Blob([JSON.stringify({name:$('name').value,title:$('title').value,summary:$('summary').value,skills:$('skills').value,experience:$('experience').value})],{type:'application/json'});
+      const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='resume.json'; a.click();
+    });
+    $('importBtn').addEventListener('click',()=> $('importFile').click());
+    $('importFile').addEventListener('change',e=>{
+      const f = e.target.files[0]; if(!f) return;
+      f.text().then(txt=>{const d=JSON.parse(txt);Object.keys(d).forEach(k=>{if($(k)) $(k).value=d[k];}); render();});
+    });
+    $('compactBtn').addEventListener('click',()=> $('preview').classList.toggle('text-sm'));
+    $('fontPlus').addEventListener('click',()=> $('preview').style.fontSize = 'larger');
+    $('fontMinus').addEventListener('click',()=> $('preview').style.fontSize = 'smaller');
+    $('bgBtn').addEventListener('click',()=>{
+      const bg = document.body::before;
+      document.body.style.setProperty('--bg-opacity', document.body.style.getPropertyValue('--bg-opacity')==='0.3'?'0.1':'0.3');
+    });
+    $('clearBtn').addEventListener('click',()=>{ if(confirm('Clear all fields?')){document.querySelectorAll('input,textarea').forEach(el=>el.value='');render();}});
+    $('printBtn').addEventListener('click',()=> window.print());
+
+    render();
+  </script>
+</body>
+</html>

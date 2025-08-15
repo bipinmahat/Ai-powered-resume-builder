@@ -1,86 +1,378 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Resume Builder AI</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 font-sans">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AI Resume Builder — Interactive Frontend</title>
 
-  <header class="bg-blue-600 text-white p-6 text-center">
-    <h1 class="text-2xl font-bold">AI Resume Builder</h1>
-    <p class="mt-2 text-sm">Create your professional resume in minutes</p>
+  <!-- Tailwind CDN with dark mode set to 'class' -->
+  <script>
+    tailwind = window.tailwind || {};
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {},
+        }
+      }
+    }
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    /* Animated, fixed, translucent background */
+    :root{ --bg-opacity: .55; }
+    .animated-bg{ position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:var(--bg-opacity);
+      background:
+      linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px) 0 0 / 24px 24px,
+        linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px) 0 0 / 24px 24px,
+        radial-gradient(40rem 40rem at 10% 20%, rgba(99,102,241,.2), transparent 60%),
+        radial-gradient(36rem 36rem at 85% 20%, rgba(16,185,129,.18), transparent 60%),
+        radial-gradient(34rem 34rem at 25% 80%, rgba(236,72,153,.15), transparent 60%),
+        radial-gradient(28rem 28rem at 75% 75%, rgba(234,179,8,.12), transparent 60%);
+      animation: float 30s ease-in-out infinite alternate, hue 80s linear infinite;
+      filter: saturate(1.05);
+    }
+    @keyframes float{ 0%{background-position:0 0,0 0,18% 18%,82% 25%,22% 82%,78% 78%} 50%{background-position:0 0,0 0,24% 22%,78% 18%,28% 76%,72% 70%} 100%{background-position:0 0,0 0,30% 18%,74% 28%,32% 80%,66% 74%} }
+    @keyframes hue{ to{ filter: hue-rotate(360deg) saturate(1.08); } }
+    .vignette::before{ content:''; position:fixed; inset:0; z-index:-1; pointer-events:none; background: radial-gradient(120rem 90rem at 50% 50%, transparent 62%, rgba(0,0,0,.18)); }
+    @media (prefers-reduced-motion: reduce){ .animated-bg{ animation:none; } }
+
+    /* theme-toggle small style */
+    .theme-toggle{ border:none; background:transparent; font-size:1.25rem; cursor:pointer; }
+
+    /* compact preview */
+    .compact #resume{ font-size: .92rem; }
+
+    /* small animation for buttons */
+    .btn-ico{ display:inline-flex; align-items:center; gap:.6rem; }
+
+    /* print rules */
+    @media print{ header,.animated-bg,.vignette,#configPanel{ display:none !important } #previewCard{ background:#fff !important; color:#111 !important; border:none !important; box-shadow:none !important } }
+  </style>
+</head>
+<body class="antialiased bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+
+  <!-- Background -->
+  <div class="animated-bg"></div>
+  <div class="vignette"></div>
+
+  <!-- Theme toggle + quick controls -->
+  <button id="theme-toggle" class="theme-toggle fixed top-4 right-4 z-50 p-2 rounded-md bg-white/60 dark:bg-slate-800/60 backdrop-blur border border-white/10 shadow-sm" aria-label="Toggle theme">
+    <span id="theme-icon">🌙</span>
+  </button>
+
+  <!-- Header -->
+  <header class="sticky top-0 z-40 backdrop-blur bg-white/60 dark:bg-slate-800/60 border-b border-slate-200/20 dark:border-slate-700/30">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div>
+        <h1 class="text-lg md:text-2xl font-semibold tracking-tight">AI Resume Builder</h1>
+        <p class="text-xs text-slate-600 dark:text-slate-300">Frontend — Gemini-ready. Interactive controls included.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="copyBtn" class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 btn-ico">📋<span class="hidden sm:inline">Copy</span></button>
+        <button id="exportJSONBtn" class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 btn-ico">⬇️<span class="hidden sm:inline">Export</span></button>
+        <button id="importJSONBtn" class="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 border border-white/10 btn-ico">⬆️<span class="hidden sm:inline">Import</span></button>
+      </div>
+    </div>
   </header>
 
-  <main class="max-w-6xl mx-auto p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+  <!-- Main -->
+  <main class="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-    <!-- Form Section -->
-    <section class="bg-white rounded-lg shadow p-6">
-      <h2 class="text-xl font-semibold mb-4">Enter Your Details</h2>
-      <form id="resumeForm" class="space-y-4">
-        <div>
-          <label class="block text-gray-700">Full Name</label>
-          <input type="text" id="name" class="mt-1 w-full border-gray-300 rounded-md shadow-sm p-2" placeholder="John Doe">
+    <!-- LEFT: Form -->
+    <section class="bg-white dark:bg-slate-800/60 border border-slate-200/8 dark:border-slate-700/20 rounded-2xl shadow p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">Your Details</h2>
+        <div class="flex gap-2">
+          <button id="clearBtn" class="px-3 py-2 rounded-lg bg-red-600 text-white">Clear</button>
+        </div>
+      </div>
+
+      <form id="resumeForm" class="grid grid-cols-1 gap-4">
+        <div class="grid md:grid-cols-2 gap-4">
+          <label class="block"><span class="text-sm">Full Name</span><input id="name" class="mt-1 w-full rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/10 p-2.5" placeholder="Alex Johnson" /></label>
+          <label class="block"><span class="text-sm">Title</span><input id="title" class="mt-1 w-full rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/10 p-2.5" placeholder="Frontend Developer" /></label>
         </div>
 
-        <div>
-          <label class="block text-gray-700">Email</label>
-          <input type="email" id="email" class="mt-1 w-full border-gray-300 rounded-md shadow-sm p-2" placeholder="john@example.com">
+        <div class="grid md:grid-cols-3 gap-4">
+          <label class="block"><span class="text-sm">Email</span><input id="email" type="email" class="mt-1 w-full rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/10 p-2.5" placeholder="alex@example.com" /></label>
+          <label class="block"><span class="text-sm">Phone</span><input id="phone" class="mt-1 w-full rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/10 p-2.5" placeholder="(+1) 555-123-4567" /></label>
+          <label class="block"><span class="text-sm">Location</span><input id="location" class="mt-1 w-full rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/10 p-2.5" placeholder="Toronto, ON" /></label>
         </div>
 
-        <div>
-          <label class="block text-gray-700">Phone</label>
-          <input type="text" id="phone" class="mt-1 w-full border-gray-300 rounded-md shadow-sm p-2" placeholder="+1 234 567 890">
+        <label class="block"><span class="text-sm">Summary</span><textarea id="summary" rows="4" class="mt-1 w-full rounded-xl bg-slate-50 dark:bg-slate-900/40 border p-2.5" placeholder="2–3 lines highlighting impact, stack, and achievements."></textarea></label>
+
+        <label class="block"><span class="text-sm">Skills (comma separated)</span><input id="skills" class="mt-1 w-full rounded-xl bg-slate-50 dark:bg-slate-900/40 border p-2.5" placeholder="React, Tailwind, TypeScript, Node.js" /></label>
+
+        <label class="block"><span class="text-sm">Experience (markdown bullets supported)</span><textarea id="experience" rows="6" class="mt-1 w-full rounded-xl bg-slate-50 dark:bg-slate-900/40 border p-2.5" placeholder="Company — Role (YYYY–YYYY)\n• Bullet with metric\n• Bullet with tech"></textarea></label>
+
+        <label class="block"><span class="text-sm">Education</span><textarea id="education" rows="3" class="mt-1 w-full rounded-xl bg-slate-50 dark:bg-slate-900/40 border p-2.5" placeholder="School — Program (YYYY–YYYY)"></textarea></label>
+
+        <!-- AI action buttons -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+          <button type="button" id="aiImproveSummary" class="px-3 py-2 rounded-lg bg-emerald-500 text-white">AI: Improve Summary</button>
+          <button type="button" id="aiGenBullets" class="px-3 py-2 rounded-lg bg-indigo-600 text-white">AI: Generate Bullets</button>
+          <button type="button" id="aiFromJD" class="px-3 py-2 rounded-lg bg-fuchsia-600 text-white">AI: From Job Description</button>
         </div>
 
-        <div>
-          <label class="block text-gray-700">Summary</label>
-          <textarea id="summary" class="mt-1 w-full border-gray-300 rounded-md shadow-sm p-2" rows="4" placeholder="Brief professional summary..."></textarea>
+        <!-- Extra interactive controls inside form -->
+        <div class="flex flex-wrap gap-2 mt-3">
+          <button id="compactBtn" type="button" class="px-3 py-2 rounded-lg bg-white/10">Toggle Compact</button>
+          <button id="incFontBtn" type="button" class="px-3 py-2 rounded-lg bg-white/10">A+</button>
+          <button id="decFontBtn" type="button" class="px-3 py-2 rounded-lg bg-white/10">A-</button>
+          <button id="bgToggleBtn" type="button" class="px-3 py-2 rounded-lg bg-white/10">BG Intensity</button>
+          <button id="downloadBtn" type="button" class="px-3 py-2 rounded-lg bg-indigo-500 text-white">Print / Download</button>
         </div>
-
-        <div>
-          <label class="block text-gray-700">Skills (comma separated)</label>
-          <input type="text" id="skills" class="mt-1 w-full border-gray-300 rounded-md shadow-sm p-2" placeholder="JavaScript, HTML, CSS">
-        </div>
-
-        <div>
-          <label class="block text-gray-700">Experience</label>
-          <textarea id="experience" class="mt-1 w-full border-gray-300 rounded-md shadow-sm p-2" rows="4" placeholder="Job experience..."></textarea>
-        </div>
-
-        <button type="button" onclick="updateResume()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Preview Resume</button>
       </form>
+
+      <!-- Job description dialog -->
+      <dialog id="jdDialog" class="rounded-2xl p-0 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 w-[min(760px,96vw)]">
+        <div class="p-4 border-b border-slate-200/8 dark:border-slate-700/20 flex items-center justify-between">
+          <h3 class="text-lg font-semibold">Paste Job Description</h3>
+          <div class="flex gap-2">
+            <button class="px-3 py-2 rounded-lg bg-white/10" onclick="jdDialog.close()">Close</button>
+          </div>
+        </div>
+        <div class="p-4">
+          <textarea id="jobDescription" class="w-full h-48 rounded-lg bg-slate-50 dark:bg-slate-900/40 p-3 border" placeholder="Paste the JD here…"></textarea>
+          <div class="flex justify-end gap-2 mt-3">
+            <button id="submitJD" class="px-4 py-2 rounded-lg bg-fuchsia-600 text-white">Generate Tailored Resume</button>
+          </div>
+        </div>
+      </dialog>
+
     </section>
 
-    <!-- Preview Section -->
-    <section class="bg-white rounded-lg shadow p-6">
-      <h2 class="text-xl font-semibold mb-4">Resume Preview</h2>
-      <div id="resumePreview" class="space-y-4">
-        <h1 class="text-2xl font-bold" id="previewName">Your Name</h1>
-        <p id="previewEmail">Email: example@example.com</p>
-        <p id="previewPhone">Phone: +1234567890</p>
-        <h3 class="font-semibold">Summary</h3>
-        <p id="previewSummary">Your summary will appear here.</p>
-        <h3 class="font-semibold">Skills</h3>
-        <p id="previewSkills">Your skills will appear here.</p>
-        <h3 class="font-semibold">Experience</h3>
-        <p id="previewExperience">Your experience will appear here.</p>
+    <!-- RIGHT: Preview -->
+    <section id="previewCard" class="bg-white dark:bg-slate-800/60 border border-slate-200/8 dark:border-slate-700/20 rounded-2xl shadow p-6">
+      <div id="resume" class="space-y-4">
+        <header>
+          <h1 id="p_name" class="text-2xl font-bold">Your Name</h1>
+          <p id="p_title" class="text-slate-500 dark:text-slate-300">Title</p>
+          <p id="p_contact" class="text-sm text-slate-500 dark:text-slate-300">email · phone · location</p>
+        </header>
+
+        <section>
+          <h3 class="text-lg font-semibold">Summary</h3>
+          <p id="p_summary" class="text-slate-700 dark:text-slate-200">Brief professional summary will appear here.</p>
+        </section>
+
+        <section>
+          <h3 class="text-lg font-semibold">Skills</h3>
+          <ul id="p_skills" class="flex flex-wrap gap-2"></ul>
+        </section>
+
+        <section>
+          <h3 class="text-lg font-semibold">Experience</h3>
+          <div id="p_experience" class="space-y-2 text-slate-700 dark:text-slate-200"></div>
+        </section>
+
+        <section>
+          <h3 class="text-lg font-semibold">Education</h3>
+          <div id="p_education" class="space-y-1 text-slate-700 dark:text-slate-200"></div>
+        </section>
       </div>
     </section>
 
   </main>
 
-  <script>
-    function updateResume() {
-      document.getElementById('previewName').innerText = document.getElementById('name').value || "Your Name";
-      document.getElementById('previewEmail').innerText = "Email: " + (document.getElementById('email').value || "example@example.com");
-      document.getElementById('previewPhone').innerText = "Phone: " + (document.getElementById('phone').value || "+1234567890");
-      document.getElementById('previewSummary').innerText = document.getElementById('summary').value || "Your summary will appear here.";
-      document.getElementById('previewSkills').innerText = document.getElementById('skills').value || "Your skills will appear here.";
-      document.getElementById('previewExperience').innerText = document.getElementById('experience').value || "Your experience will appear here.";
-    }
-  </script>
+  <!-- Hidden file input for import -->
+  <input id="importFile" type="file" accept="application/json" class="hidden" />
 
+  <!-- Toast -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-xl bg-black/80 text-white shadow hidden z-50"></div>
+
+  <script>
+    // Helper
+    const $ = id => document.getElementById(id);
+    const toast = $('toast');
+    function showToast(msg, ms=2200){ toast.textContent = msg; toast.classList.remove('hidden'); setTimeout(()=>toast.classList.add('hidden'), ms); }
+
+    // --- Markdown lite to HTML ---
+    function mdToHtml(md=''){ const lines = md.split(/\n+/).map(l=>{ if(/^\s*[•*-]\s+/.test(l)) return `<li>${l.replace(/^\s*[•*-]\s+/, '')}</li>`; if(/\S/.test(l)) return `<p>${l}</p>`; return '' }); let html=''; let inList=false; for(const part of lines){ if(part.startsWith('<li')){ if(!inList){ html+='<ul class="list-disc pl-5 space-y-1">'; inList=true;} html+=part; } else { if(inList){ html += '</ul>'; inList=false; } html+=part; } } if(inList) html += '</ul>'; return html; }
+
+    // --- Render Preview ---
+    function render(){
+      const name = $('name').value.trim() || 'Your Name';
+      const title = $('title').value.trim() || 'Title';
+      const email = $('email').value.trim() || 'email@example.com';
+      const phone = $('phone').value.trim() || '(000) 000-0000';
+      const location = $('location').value.trim() || 'City, Country';
+      const summary = $('summary').value.trim() || 'Brief professional summary will appear here.';
+      const skills = $('skills').value.split(',').map(s=>s.trim()).filter(Boolean);
+      const exp = $('experience').value || '';
+      const edu = $('education').value || '';
+
+      $('p_name').textContent = name;
+      $('p_title').textContent = title;
+      $('p_contact').textContent = `${email} · ${phone} · ${location}`;
+      $('p_summary').textContent = summary;
+
+      const pSkills = $('p_skills'); pSkills.innerHTML = '';
+      skills.forEach(s=>{ const li = document.createElement('li'); li.className = 'rounded-full px-3 py-1 text-sm bg-slate-100/60 dark:bg-slate-700/40 border border-slate-200/8'; li.textContent = s; pSkills.appendChild(li); });
+
+      $('p_experience').innerHTML = mdToHtml(exp);
+      $('p_education').innerHTML = mdToHtml(edu);
+    }
+
+    ['name','title','email','phone','location','summary','skills','experience','education'].forEach(id=>$(id).addEventListener('input', render));
+    render();
+
+    // --- Config (local) ---
+    const cfgKey = 'ai_cfg_v1';
+    const cfg = { mode:'proxy', base:'/api/gemini', model:'gemini-1.5-flash', key:'' };
+    function loadCfg(){ try{ const saved = JSON.parse(localStorage.getItem(cfgKey)||'null'); if(saved) Object.assign(cfg,saved); }catch{} }
+    function saveCfg(){ localStorage.setItem(cfgKey, JSON.stringify(cfg)); }
+    loadCfg();
+
+    // --- AI Client (Gemini-ready) ---
+    class AIClient{
+      constructor(cfg){ this.cfg = cfg; }
+      async generate({ userPrompt='', systemPrompt='', resumeData={}, stream=true }){
+        if(this.cfg.mode === 'proxy'){
+          const url = `${this.cfg.base.replace(/\/$/,'')}/generate`;
+          const resp = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ model:this.cfg.model, userPrompt, systemPrompt, resumeData, stream }) });
+          const ct = resp.headers.get('content-type') || '';
+          if(ct.includes('text/event-stream') || stream){
+            // Try to stream (SSE style) and return final text
+            const reader = resp.body.getReader(); const dec = new TextDecoder(); let buf=''; let out='';
+            while(true){ const {done,value} = await reader.read(); if(done) break; buf += dec.decode(value, { stream: true });
+              // split by SSE chunks (\n\n)
+              let idx;
+              while((idx = buf.indexOf('\n\n')) >= 0){ const chunk = buf.slice(0, idx).trim(); buf = buf.slice(idx+2);
+                if(!chunk) continue;
+                // lines
+                const lines = chunk.split('\n');
+                for(const ln of lines){ if(ln.startsWith('data:')){ const raw = ln.replace(/^data:\s*/,''); try{ const job = JSON.parse(raw); if(job.text){ out += job.text; if(typeof onStream === 'function') onStream(job.text); } }catch(e){ /* ignore */ } } }
+              }
+            }
+            // any remaining buffer (attempt parse)
+            try{ const last = buf.trim(); if(last){ const json = JSON.parse(last.replace(/^data:\s*/,'')); if(json.text){ out += json.text; if(typeof onStream === 'function') onStream(json.text); } } }catch(e){}
+            return out;
+          } else {
+            const json = await resp.json(); return json.text || '';
+          }
+        } else {
+          // Direct mode calling Google API from client is unsafe; we provide a minimal fallback (user must supply a key)
+          if(!this.cfg.key) throw new Error('Direct API key required for direct mode');
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.cfg.model)}:generateContent?key=${encodeURIComponent(this.cfg.key)}`;
+          const payload = { prompt: { text: `${systemPrompt}\n\n${userPrompt}` } };
+          const resp = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+          const data = await resp.json();
+          const text = (data?.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) ? data.candidates[0].content.parts.map(p=>p.text).join('\n') : (data?.text||'');
+          return text;
+        }
+      }
+    }
+
+    // streaming hook: will be set by runAI
+    function onStream(chunk){ /* noop, replaced dynamically by runAI */ }
+
+    const aiClient = new AIClient(cfg);
+
+    // --- Common runAI wrapper ---
+    async function runAI({ prompt, targetButton }){
+      if(!prompt) return showToast('Empty prompt');
+      const origLabel = targetButton.textContent; targetButton.disabled = true; targetButton.textContent = 'Thinking…';
+      let collected = '';
+      onStream = (chunk)=>{ collected += chunk; if(typeof currentApply === 'function') currentApply(collected); };
+      try{
+        const res = await aiClient.generate({ userPrompt: prompt, resumeData: collectData(), stream: true });
+        // if streaming wasn't used, res has the text
+        if(res && !collected) collected = res;
+        if(typeof currentApply === 'function') currentApply(collected);
+      }catch(err){ console.error(err); showToast(err.message || 'AI request failed'); }
+      finally{ targetButton.disabled = false; targetButton.textContent = origLabel; onStream = ()=>{}; currentApply = ()=>{}; }
+    }
+
+    // Apply callback used by AI actions
+    let currentApply = ()=>{};
+
+    // Collect form data
+    function collectData(){ return { name:$('name').value, title:$('title').value, email:$('email').value, phone:$('phone').value, location:$('location').value, summary:$('summary').value, skills:$('skills').value, experience:$('experience').value, education:$('education').value }; }
+
+    // --- AI Buttons wiring ---
+    $('aiImproveSummary').addEventListener('click', ()=>{
+      currentApply = (text)=>{ $('summary').value = text.trim(); render(); };
+      const p = `Improve this professional summary for a resume. Keep it 2-3 sentences, quantify impact where possible, mirror a modern tech resume tone.\n\nCURRENT SUMMARY:\n"${$('summary').value}"\n\nSKILLS: ${$('skills').value}\nROLE: ${$('title').value}`;
+      runAI({ prompt: p, targetButton: $('aiImproveSummary') });
+    });
+
+    $('aiGenBullets').addEventListener('click', ()=>{
+      currentApply = (text)=>{ $('experience').value += "\n" + text.trim(); render(); };
+      const p = `Based on the user's role, stack, and outcomes, generate 4-6 resume bullets in first-person removed style (no pronouns), each with a metric and technology. Output as markdown bullets starting with "• ".\n\nROLE: ${$('title').value}\nSKILLS: ${$('skills').value}\nCURRENT EXPERIENCE CONTEXT:\n${$('experience').value}`;
+      runAI({ prompt: p, targetButton: $('aiGenBullets') });
+    });
+
+    // JD dialog wiring
+    const jdDialog = $('jdDialog');
+    $('aiFromJD').addEventListener('click', ()=>{ if(typeof jdDialog.showModal === 'function') jdDialog.showModal(); else jdDialog.style.display = 'block'; });
+
+    $('submitJD').addEventListener('click', ()=>{
+      currentApply = (text)=>{
+        // naive parsing: summary up to Skills: if present
+        const beforeSkills = text.split(/Skills:/i)[0] || text;
+        $('summary').value = beforeSkills.replace(/^(Summary:)?/i,'').trim();
+        $('experience').value += "\n" + text.trim(); render();
+      };
+      const jd = $('jobDescription').value;
+      const p = `Create a tailored resume summary and 6 role-specific bullets aligned to this job description. Use user's data as base, keep ATS-friendly language, include metrics and relevant tools.\n\nJOB DESCRIPTION:\n${jd}\n\nUSER DATA:\n${JSON.stringify(collectData(), null, 2)}`;
+      if(typeof jdDialog.close === 'function') jdDialog.close(); else jdDialog.style.display='none';
+      runAI({ prompt: p, targetButton: $('aiFromJD') });
+    });
+
+    // Print / Download
+    $('downloadBtn').addEventListener('click', ()=> window.print());
+
+    // Clear
+    $('clearBtn').addEventListener('click', ()=>{ if(confirm('Clear all fields?')){ ['name','title','email','phone','location','summary','skills','experience','education'].forEach(id=>$(id).value=''); render(); showToast('Cleared'); } });
+
+    // --- Extra interactive buttons ---
+    // Copy preview text
+    $('copyBtn').addEventListener('click', async ()=>{
+      const text = buildPlainText();
+      try{ await navigator.clipboard.writeText(text); showToast('Copied to clipboard'); }catch(err){ console.error(err); showToast('Copy failed — fallback download'); startDownload('resume.txt', text); }
+    });
+
+    // Export JSON
+    function startDownload(filename, content){ const blob = new Blob([content], { type: 'application/octet-stream' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
+    $('exportJSONBtn').addEventListener('click', ()=>{ const data = collectData(); startDownload(`resume-${(data.name||'resume').replace(/\s+/g,'_')}.json`, JSON.stringify(data, null, 2)); showToast('Exported JSON'); });
+
+    // Import JSON
+    $('importJSONBtn').addEventListener('click', ()=> $('importFile').click());
+    $('importFile').addEventListener('change', async (e)=>{
+      const f = e.target.files && e.target.files[0]; if(!f) return; try{ const txt = await f.text(); const obj = JSON.parse(txt); ['name','title','email','phone','location','summary','skills','experience','education'].forEach(k=>{ if(obj[k] !== undefined) $(k).value = obj[k]; }); render(); showToast('Imported JSON'); }catch(err){ console.error(err); showToast('Import failed'); } finally{ e.target.value = ''; }
+    });
+
+    // Compact toggle
+    $('compactBtn').addEventListener('click', ()=>{ $('previewCard').classList.toggle('compact'); showToast('Toggled compact view'); });
+
+    // Font size controls
+    const baseFontKey = 'resume_font_size';
+    function setBaseFontSize(size){ document.documentElement.style.setProperty('--base-font-size', size + 'px'); document.documentElement.style.fontSize = size + 'px'; localStorage.setItem(baseFontKey, size); }
+    const savedFont = parseInt(localStorage.getItem(baseFontKey) || '16', 10); setBaseFontSize(savedFont);
+    $('incFontBtn').addEventListener('click', ()=>{ const cur = parseInt(getComputedStyle(document.documentElement).fontSize,10); const next = Math.min(cur + 1, 20); setBaseFontSize(next); showToast('Increased font'); });
+    $('decFontBtn').addEventListener('click', ()=>{ const cur = parseInt(getComputedStyle(document.documentElement).fontSize,10); const next = Math.max(cur - 1, 12); setBaseFontSize(next); showToast('Decreased font'); });
+
+    // Background intensity toggle
+    let bgHigh = true;
+    $('bgToggleBtn').addEventListener('click', ()=>{ bgHigh = !bgHigh; document.querySelector('.animated-bg').style.opacity = bgHigh ? '0.55' : '0.18'; showToast(bgHigh ? 'Background: vivid' : 'Background: subtle'); });
+
+    // Theme toggle (persists)
+    const themeKey = 'resume_theme_v1';
+    const themeIcon = $('theme-icon');
+    function applyTheme(t){ if(t === 'dark'){ document.documentElement.classList.add('dark'); themeIcon.textContent='☀️'; } else { document.documentElement.classList.remove('dark'); themeIcon.textContent='🌙'; } localStorage.setItem(themeKey, t); }
+    const savedTheme = localStorage.getItem(themeKey) || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); applyTheme(savedTheme);
+    $('theme-toggle').addEventListener('click', ()=>{ const isDark = document.documentElement.classList.toggle('dark'); applyTheme(isDark ? 'dark' : 'light'); showToast(isDark ? 'Dark mode' : 'Light mode'); });
+
+    // Build plain text resume for copy
+    function buildPlainText(){ const d = collectData(); return `${d.name}\n${d.title}\n${d.email} · ${d.phone} · ${d.location}\n\nSUMMARY:\n${d.summary}\n\nSKILLS:\n${d.skills}\n\nEXPERIENCE:\n${d.experience}\n\nEDUCATION:\n${d.education}`; }
+
+    // Utility: initial render data from URL param or saved draft (optional)
+    // You can implement autosave if desired
+
+    // --- End
+  </script>
 </body>
 </html>

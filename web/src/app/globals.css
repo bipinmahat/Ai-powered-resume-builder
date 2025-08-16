@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===========================
+   Root Variables
+   =========================== */
+:root {
+  --bg: #0b1220;          /* dark background */
+  --card: #0f1b31;        /* dark card background */
+  --muted: #9fb0cc;       /* muted text color */
+  --primary: #4ea1ff;     /* primary accent */
+  --text: #e7eefc;        /* default text color */
+  --text-dark: #1f2937;   /* text inside inputs & white cards */
+  --placeholder: #6b7280; /* placeholder text */
+}
+
+/* ===========================
+   Base Styles
+   =========================== */
+html,
+body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ===========================
+   Layout Helpers
+   =========================== */
+.container {
+  @apply max-w-6xl mx-auto px-4;
+}
+
+/* ===========================
+   Components
+   =========================== */
+.card {
+  @apply rounded-2xl p-4 md:p-6 shadow-lg;
+  background: var(--card);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.btn {
+  @apply inline-flex items-center gap-2 rounded-lg px-4 py-2 font-medium transition;
+  background: #2563eb;
+}
+
+.btn:disabled {
+  @apply opacity-60 cursor-not-allowed;
+}
+
+.input {
+  @apply w-full bg-transparent border rounded-lg px-3 py-2 outline-none;
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--text-dark);
+}
+
+.label {
+  @apply block mb-1 text-sm text-slate-300;
+}
+
+.text-muted {
+  color: var(--muted);
+}
+
+/* ===========================
+   Form Elements
+   =========================== */
+input,
+textarea,
+select {
+  color: var(--text-dark);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--placeholder);
+}
+
+/* ===========================
+   Resume Preview Styles
+   =========================== */
+.preview {
+  @apply rounded-2xl p-4 md:p-6 shadow-lg bg-white border border-slate-200;
+  color: #1f2937; /* gray-800 */
+}
+
+.preview h1 {
+  color: #0f172a; /* slate-900 */
+}
+
+.preview h2 {
+  color: #334155; /* slate-700 */
+}
+
+.preview h3 {
+  color: #334155; /* slate-700 */
+}
+
+.preview .muted {
+  color: #6b7280; /* gray-500 */
+}
